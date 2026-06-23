@@ -382,7 +382,10 @@
   else{H+='<div class="row" style="margin-bottom:6px;"><label class="primary" style="flex:1;text-align:center;cursor:pointer;padding:11px 14px;border-radius:10px;font-size:15px;">➕ 上傳 PDF 分析<input id="pdfIn" type="file" accept="application/pdf" style="display:none;"></label><button id="setKey" style="flex:0 0 auto;">🔑</button></div>';}
   H+='<div id="paperBusy" class="sub" style="display:none;color:var(--clay);margin:6px 0 8px;">🤖 AI 分析中…（約 20–40 秒，請勿關閉）</div>';if(_pendingPdf&&_pendingErr)H+='<div class="card" style="border-color:var(--no);"><div style="color:var(--no);font-size:13px;white-space:pre-wrap;line-height:1.6;">❌ '+esc(_pendingErr)+'</div><div class="mini" style="margin:6px 0;">檔案還在（'+esc((_pendingPdf.name||'').slice(0,28))+'），不用重選</div><button id="pdfRetry" class="primary" style="width:100%;">🔄 重試</button></div>';
   var read=st.papers.filter(function(p){return p.read;}).length;
-  if(st.papers.length)H+='<div class="mini" style="margin:6px 0;">共 '+st.papers.length+' 篇，已讀 '+read+' 篇</div>';
+  var _ym=ymd(now).slice(0,7);function _rd(p){return p.readDate||'';}
+  var mY=st.papers.filter(function(p){return p.read&&_rd(p).slice(0,7)===_ym;}).length;
+  var wZ=st.papers.filter(function(p){return p.read&&_rd(p)&&diff(new Date(_rd(p)+'T00:00:00'),now)>=0&&diff(new Date(_rd(p)+'T00:00:00'),now)<=6;}).length;
+  if(st.papers.length){var stt='📚 已讀 '+read+' 篇　·　本月 '+mY+' 篇';if(mY>=4)stt+='　·　本週 '+wZ+' 篇';H+='<div class="card" style="padding:11px 14px;text-align:center;font-weight:600;color:var(--clay);">'+stt+'</div>';}
   if(!st.papers.length)H+='<div class="card" style="text-align:center;color:var(--muted);">還沒有論文～上傳第一篇 PDF 開始吧！</div>';
   else st.papers.slice().reverse().forEach(function(p){H+='<div class="ttl" data-paper="'+p.id+'"><span style="font-size:13.5px;">'+(p.read?'✅ ':'⭕ ')+esc(p.title||'(未命名)')+'<div class="mini">'+esc(p.authors||'')+(p.year?' · '+p.year:'')+(p.journal?' · '+esc(p.journal):'')+'</div></span><span class="pill">'+(p.read?'看心得':'寫心得 →')+'</span></div>';});
   return H;}
