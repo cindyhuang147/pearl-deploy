@@ -354,10 +354,21 @@
    var b64=(''+fr.result).split(',')[1]||'';
    var prompt='你是資深學術論文導讀者，讀者是博士生。請仔細閱讀整份 PDF，回傳純 JSON（不要 markdown 圍欄、不要多餘文字）。欄位：tldr, title, authors, year, journal, quartile, if, keywords, summary, findings, contribution, method, gap, limit, future。【tldr】用一兩句直白的繁體中文講清楚「這篇到底在研究什麼、最重要的發現是什麼」，讓人一眼看懂這篇在幹嘛。【keywords】3到6個關鍵詞，用逗號分隔。【summary/findings/contribution/method/gap/limit/future】一律繁體中文、寫得具體（盡量帶出研究對象/樣本數/變項/理論/方法名稱/關鍵數據與主要結果），每段 2到4 點、每點用「・」開頭；其中 findings 必須寫出論文實際的發現與結論（要有內容、不要空泛），summary 講清楚研究目的與脈絡，method 講資料來源/樣本/分析方法。title/authors/journal 照原文；quartile 如 Q1；if 為影響指數數字；不確定的數值就留空字串。';
    var body={contents:[{parts:[{text:prompt},{inline_data:{mime_type:'application/pdf',data:b64}}]}],generationConfig:{temperature:0.4,maxOutputTokens:8192,responseMimeType:'application/json'}};
-   fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key='+encodeURIComponent(gkey()),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
-    .then(function(r){return r.json();})
-    .then(function(j){try{var t=j.candidates[0].content.parts[0].text;cb(null,_normPaper(JSON.parse(t)));}catch(e){cb('解析失敗：'+(j&&j.error?j.error.message:e),null);}})
-    .catch(function(e){cb('呼叫失敗：'+e,null);});
+   var MODELS=['gemini-2.5-flash','gemini-2.0-flash'];var busy=document.getElementById('paperBusy');
+   function attempt(i){
+    var model=MODELS[Math.min(i,MODELS.length-1)];
+    if(busy&&i>0)busy.textContent='🤖 AI 忙線中，自動重試…（第 '+i+' 次，可能要等一下）';
+    fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+encodeURIComponent(gkey()),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+     .then(function(r){return r.json().then(function(j){return {st:r.status,j:j};});})
+     .then(function(res){var j=res.j;
+      if(j&&j.candidates&&j.candidates[0]){try{cb(null,_normPaper(JSON.parse(j.candidates[0].content.parts[0].text)));}catch(e){cb('解析失敗：'+e,null);}return;}
+      var msg=(j&&j.error&&j.error.message)||('HTTP '+res.st);
+      var bz=(res.st===503||res.st===429||/high demand|overload|UNAVAILABLE|RESOURCE_EXHAUSTED|try again/i.test(msg));
+      if(bz&&i<5){setTimeout(function(){attempt(i+1);},2000+i*2500);}
+      else cb(bz?'😮\u200d💨 Gemini 現在流量爆滿（這是 Google 端暫時的狀況，不是你的問題）。等一兩分鐘再上傳一次就好。':'分析失敗：'+msg,null);})
+     .catch(function(e){if(i<5){setTimeout(function(){attempt(i+1);},2000+i*2500);}else cb('呼叫失敗（網路或金鑰問題）：'+e,null);});
+   }
+   attempt(0);
   };
   fr.readAsDataURL(file);
  }
